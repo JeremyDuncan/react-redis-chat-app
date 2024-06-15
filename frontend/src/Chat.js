@@ -1,4 +1,5 @@
-////// /react-chat-app/frontend/src/Chat.js
+//////// /react-chat-app/frontend/src/Chat.js
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { TextareaAutosize, Button, List, ListItem, ListItemText, Typography, Container, Paper, useMediaQuery, Box } from '@mui/material';
@@ -6,7 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import './Chat.css';
 import { format } from 'date-fns';
 
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'https://api.text.jeremyd.net';
 
 const Chat = ({ user }) => {
     const [messages, setMessages] = useState([]);
@@ -215,9 +216,9 @@ const Chat = ({ user }) => {
     }, [messages]);
 
     return (
-        <Container maxWidth={isMobile ? false : "sm"} className="chat-container">
+        <Container maxWidth={isMobile ? "xs" : "sm"} className="chat-container">
             <Paper elevation={3} style={{ padding: '1rem', height: isMobile ? '100vh' : 'auto', display: 'flex', flexDirection: 'column', backgroundColor: '#1a1a1a' }}>
-                <Typography variant="h4" align="center" gutterBottom style={{ color: 'white' }}>
+                <Typography variant="h5" align="center" gutterBottom style={{ color: 'white' }}>
                     Chat as {user}
                 </Typography>
                 <List
@@ -262,8 +263,18 @@ const Chat = ({ user }) => {
                         value={input}
                         onChange={handleInputChange}
                         onBlur={handleBlur}
-                        style={{ flexGrow: 1, resize: 'none', padding: '10px', backgroundColor: '#1a1a1a', color: 'white', border: 'none', outline: 'none' }}
+                        style={{
+                            flexGrow: 1,
+                            resize: 'none',
+                            padding: '10px',
+                            backgroundColor: '#1a1a1a',
+                            color: 'white',
+                            border: 'none',
+                            outline: 'none',
+                            fontSize: '16px' // Ensure font size is 16px or larger
+                        }}
                     />
+
                     <Button
                         variant="contained"
                         className="send-button"

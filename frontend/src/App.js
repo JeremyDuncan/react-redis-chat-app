@@ -6,7 +6,7 @@ import Chat from './Chat';
 import { Container, Typography, Button, Paper, Box, Badge, CssBaseline, ThemeProvider, createTheme, Grid } from '@mui/material';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_API_URL || 'https://api.text.jeremyd.net';
 
 const darkTheme = createTheme({
   palette: {
@@ -39,6 +39,8 @@ const App = () => {
   const fetchUnreadCounts = async () => {
     try {
       const response = await axios.get(`${API_URL}/unread-counts`);
+      console.log('RESPONSE => ', response)
+
       setJeremyUnreadCount(response.data.Jeremy);
       setKaseyUnreadCount(response.data.Kasey);
     } catch (error) {

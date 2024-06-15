@@ -5,18 +5,11 @@ const redis = require('redis');
 const cors = require('cors');
 
 const app = express();
-//app.use(cors({ origin: 'http://localhost:3000' }));
-//app.use(cors());
-
-//const corsOptions = {
-//    origin: 'https://gingerchat.jeremyd.net',
-//    optionsSuccessStatus: 200
-//};
 const corsOptions = {
     origin: '*',
     optionsSuccessStatus: 200
 };
-//
+
 app.use(cors(corsOptions));
 
 app.use(express.json());

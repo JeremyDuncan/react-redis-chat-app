@@ -30,7 +30,7 @@ services:
       - ./frontend/package.json:/usr/src/app/package.json
       - ./frontend/yarn.lock:/usr/src/app/yarn.lock
     environment:
-      - REACT_APP_API_URL=http://backend:5001
+      - REACT_APP_API_URL=https://api.text.jeremyd.net
     depends_on:
       - backend
 
