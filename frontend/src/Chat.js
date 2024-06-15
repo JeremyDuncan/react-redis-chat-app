@@ -271,7 +271,7 @@ const Chat = ({ user }) => {
                             color: 'white',
                             border: 'none',
                             outline: 'none',
-                            fontSize: '16px' // Ensure font size is 16px or larger
+                            fontSize: '16px'
                         }}
                     />
 
