@@ -1,7 +1,9 @@
 
 # React Chat Application
 
-This repository contains a real-time chat application built with React for the frontend, Node.js and Express for the backend, and Redis for message storage. It supports text and image messaging.
+### This repository contains a real-time chat application built with React for the frontend, Node.js and Express for the backend, and Redis for message storage. It supports text and image messaging.
+![App Screenshot](./app_screenshot.png)
+
 
 ## Features
 
