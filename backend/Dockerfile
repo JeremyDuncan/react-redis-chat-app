@@ -23,4 +23,5 @@ COPY . .
 EXPOSE 5001
 
 # Start the app
-CMD [ "node", "index.js" ]
+CMD ["npx", "nodemon", "index.js"]
+

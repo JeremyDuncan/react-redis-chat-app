@@ -1,9 +1,8 @@
-//////// /react-chat-app/frontend/src/Chat.js
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { TextareaAutosize, Button, List, ListItem, ListItemText, Typography, Container, Paper, useMediaQuery, Box } from '@mui/material';
+import { TextareaAutosize, Button, List, ListItem, ListItemText, Typography, Container, Paper, useMediaQuery, Box, IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { PhotoCamera } from '@mui/icons-material';
 import './Chat.css';
 import { format } from 'date-fns';
 
@@ -14,6 +13,7 @@ const Chat = ({ user }) => {
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [typingStatus, setTypingStatus] = useState('');
+    const [loaded, setLoaded] = useState(false);
     const [lastReadMessageId, setLastReadMessageId] = useState(null);
     const typingTimeoutRef = useRef(null);
     const bottomRef = useRef(null);
@@ -24,6 +24,8 @@ const Chat = ({ user }) => {
     const otherUser = user === 'Jeremy' ? 'Kasey' : 'Jeremy';
     const lastMessageId = useRef(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const lastNotificationId = useRef(null);
 
     const handleReadReceipts = useCallback(async () => {
         const lastMessage = messages[messages.length - 1];
@@ -44,6 +46,18 @@ const Chat = ({ user }) => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     };
 
+    const handleScroll = () => {
+        const element = bottomRef.current;
+        if (element) {
+            const { scrollTop, scrollHeight, clientHeight } = element;
+            setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 50);
+        }
+    };
+
+    const sleep = (milliseconds) => {
+        return new Promise(resolve => setTimeout(resolve, milliseconds));
+    };
+
     useEffect(() => {
         const fetchMessages = async () => {
             try {
@@ -52,8 +66,6 @@ const Chat = ({ user }) => {
                         'Content-Type': 'application/json'
                     }
                 });
-                console.log('Fetched messages:', response.data);
-
                 const newMessages = response.data;
                 const wasAtBottom = isAtBottom;
 
@@ -66,18 +78,25 @@ const Chat = ({ user }) => {
                     setLastReadMessageId(null);
                 }
 
-                const lastMessage = newMessages[newMessages.length - 1];
-                if (newMessages.length > messages.length && lastMessage.name !== user) {
-                    const newMessageSound = new Audio('/notification.wav');
-                    newMessageSound.play().catch(error => {
-                        console.log('Audio playback failed: ', error);
-                    });
+                if (newMessages.length > 0) {
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage.name !== user && lastMessage.id !== lastNotificationId.current) {
+                        scrollToBottom('auto')
+                        console.log('Playing new message sound');
+                        const newMessageSound = new Audio('/notification.wav');
+                        newMessageSound.play().catch(error => {
+                            console.log('Audio playback failed: ', error);
+                        });
+                        lastNotificationId.current = lastMessage.id;
+                    }
+                    lastMessageId.current = lastMessage.id;
+                } else {
+                    lastMessageId.current = null;
                 }
-                lastMessageId.current = lastMessage.id;
 
-                if (wasAtBottom) {
-                    scrollToBottom('smooth');
-                }
+//                if (wasAtBottom) {
+//                    scrollToBottom('smooth');
+//                }
             } catch (error) {
                 console.error('Error fetching messages:', error);
             }
@@ -90,7 +109,6 @@ const Chat = ({ user }) => {
                         'Content-Type': 'application/json'
                     }
                 });
-                console.log('Fetched status:', response.data);
                 const { isTyping, lastReadMessageId } = response.data;
                 setTypingStatus(isTyping ? `${otherUser} is typing...` : '');
 
@@ -131,17 +149,38 @@ const Chat = ({ user }) => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('focus', handleFocus);
         };
-    }, [user, otherUser, handleReadReceipts, messages.length, isAtBottom]);
+    }, [user, otherUser, handleReadReceipts, isAtBottom]);
+
+    // Scroll to bottom on initial load with a delay
+    useEffect(() => {
+        const initialScroll = async () => {
+            if (!loaded) {
+                await sleep(1000); // Wait for 1 second
+                scrollToBottom('auto');
+                setLoaded(true); // Set to true so it won't run again
+            }
+        };
+        initialScroll();
+    }, [loaded]);
 
     const sendMessage = async () => {
-        if (input.trim() !== "") {
+        if (input.trim() !== "" || selectedImage) {
+            const formData = new FormData();
+            formData.append('name', user);
+            formData.append('text', input);
+            if (selectedImage) {
+                formData.append('image', selectedImage);
+            }
+
             try {
-                await axios.post(`${API_URL}/messages`, { name: user, text: input }, {
+                const response = await axios.post(`${API_URL}/messages`, formData, {
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'multipart/form-data'
                     }
                 });
+                console.log('Sent message response:', response.data);
                 setInput('');
+                setSelectedImage(null);
                 setIsTyping(false);
                 await axios.post(`${API_URL}/typing`, { user, isTyping: false }, {
                     headers: {
@@ -149,10 +188,19 @@ const Chat = ({ user }) => {
                     }
                 });
                 clearTimeout(typingTimeoutRef.current);
+                if (isAtBottom) {
+                    scrollToBottom('smooth');
+                }
             } catch (error) {
                 console.error('Error sending message:', error);
             }
         }
+    };
+
+    const handleSendMessage = async () => {
+        await sendMessage();
+        await sleep(200); // Wait for 200 milliseconds
+        scrollToBottom('auto');
     };
 
     const handleInputChange = async (e) => {
@@ -196,24 +244,11 @@ const Chat = ({ user }) => {
         }, 3000);
     };
 
-    const handleScroll = () => {
-        const element = bottomRef.current;
-        if (element) {
-            const { scrollTop, scrollHeight, clientHeight } = element;
-            setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 50);
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setSelectedImage(e.target.files[0]);
         }
     };
-
-    const handleBlur = async () => {
-        handleReadReceipts();
-    };
-
-    useEffect(() => {
-        console.log('Messages state:', messages);
-        if (isAtBottom) {
-            scrollToBottom();
-        }
-    }, [messages]);
 
     return (
         <Container maxWidth={isMobile ? "xs" : "sm"} className="chat-container">
@@ -233,15 +268,20 @@ const Chat = ({ user }) => {
                                 alignItems="flex-start"
                                 className={message.name === user ? "chat-bubble user" : "chat-bubble other"}
                             >
-                                <ListItemText
-                                    primary={message.text.split('\n').map((line, index) => (
-                                        <span key={index}>
-                                            {line}
-                                            <br />
-                                        </span>
-                                    ))}
-                                    secondary={`${message.name}, ${new Date(message.timestamp).toLocaleString()}`}
-                                />
+                                {message.text && (
+                                    <ListItemText
+                                        primary={message.text.split('\n').map((line, index) => (
+                                            <span key={index}>
+                                                {line}
+                                                <br />
+                                            </span>
+                                        ))}
+                                        secondary={`${message.name}, ${new Date(message.timestamp).toLocaleString()}`}
+                                    />
+                                )}
+                                {message.imageUrl && (
+                                    <Box component="img" src={message.imageUrl} alt="Sent image" sx={{ maxWidth: '100%', borderRadius: '10px', mt: 1 }} />
+                                )}
                             </ListItem>
                             {message.id === lastReadMessageId && message.name === user && (
                                 <Typography variant="body2" color="textSecondary" align="right" style={{ marginLeft: '1rem', color: 'white' }}>
@@ -262,7 +302,7 @@ const Chat = ({ user }) => {
                         placeholder="Type a message..."
                         value={input}
                         onChange={handleInputChange}
-                        onBlur={handleBlur}
+                        onBlur={handleReadReceipts} // Fixed handleBlur
                         style={{
                             flexGrow: 1,
                             resize: 'none',
@@ -274,11 +314,22 @@ const Chat = ({ user }) => {
                             fontSize: '16px'
                         }}
                     />
-
+                    <input
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        id="icon-button-file"
+                        type="file"
+                        onChange={handleImageChange}
+                    />
+                    <label htmlFor="icon-button-file">
+                        <IconButton color="primary" component="span">
+                            <PhotoCamera />
+                        </IconButton>
+                    </label>
                     <Button
                         variant="contained"
                         className="send-button"
-                        onClick={sendMessage}
+                        onClick={handleSendMessage}
                         style={{ marginLeft: '0.5rem', backgroundColor: '#007bff', color: 'white' }}
                     >
                         Send

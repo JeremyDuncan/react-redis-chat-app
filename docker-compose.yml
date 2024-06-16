@@ -16,8 +16,10 @@ services:
       - "5001:5001"
     volumes:
       - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
     depends_on:
       - redis
+    command: npx nodemon index.js
 
   frontend:
     build: ./frontend

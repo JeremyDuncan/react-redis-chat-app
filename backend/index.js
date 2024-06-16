@@ -1,8 +1,11 @@
-////// /react-chat-app/backend/index.js
-
 const express = require('express');
 const redis = require('redis');
 const cors = require('cors');
+const multer = require('multer');
+const AWS = require('aws-sdk');
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config(); // Load environment variables from .env file
 
 const app = express();
 const corsOptions = {
@@ -11,23 +14,55 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
 const redisClient = redis.createClient({
-    url: 'redis://redis:6379' // Use the Docker service name here
+    url: process.env.REDIS_URL
 });
 redisClient.on('error', (err) => console.error('Redis error:', err));
 
 redisClient.connect().catch(console.error);
 
+const storage = multer.memoryStorage(); // Store files in memory temporarily
+const upload = multer({ storage: storage });
+
+const s3 = new AWS.S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    endpoint: process.env.MINIO_ENDPOINT,
+    s3ForcePathStyle: true, // needed with MinIO
+    signatureVersion: 'v4',
+    sslEnabled: process.env.MINIO_USE_SSL === 'true'
+});
+
 // Add a new message
-app.post('/messages', async (req, res) => {
+app.post('/messages', upload.single('image'), async (req, res) => {
     const { name, text } = req.body;
+    let imageUrl = null;
+
+    if (req.file) {
+        const params = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `${Date.now()}_${req.file.originalname}`,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
+            ACL: 'public-read'
+        };
+
+        try {
+            const data = await s3.upload(params).promise();
+            imageUrl = data.Location;
+        } catch (err) {
+            console.error('Error uploading image to S3:', err);
+            return res.status(500).send(err.toString());
+        }
+    }
+
     const message = {
         id: Date.now(),
         name,
         text,
+        imageUrl,
         timestamp: new Date(),
         readAt: null
     };

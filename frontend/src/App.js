@@ -39,7 +39,7 @@ const App = () => {
   const fetchUnreadCounts = async () => {
     try {
       const response = await axios.get(`${API_URL}/unread-counts`);
-      console.log('RESPONSE => ', response)
+//      console.log('RESPONSE => ', response)
 
       setJeremyUnreadCount(response.data.Jeremy);
       setKaseyUnreadCount(response.data.Kasey);
